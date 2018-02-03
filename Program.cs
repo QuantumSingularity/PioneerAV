@@ -64,14 +64,25 @@ namespace PioPi
                 client.BeginConnect( remoteEP, new AsyncCallback(ConnectCallback), client);  
                 connectDone.WaitOne();  
 
-                // Send test data to the remote device.  
+
+                // Send test data to the remote device.  VOLUMESTATUS
                 Send(client,"?V\r\n");  
                 sendDone.WaitOne();  
 
-                // Send test data to the remote device.  
+                    Receive(client);  
+                    receiveDone.WaitOne();  
+
+
+                // Send test data to the remote device.  POWERSTATUS
                 Send(client,"?P\r\n");  
                 sendDone.WaitOne();  
 
+                    Receive(client);  
+                    receiveDone.WaitOne();  
+
+                // Send test data to the remote device.  AUDIOINFO
+                Send(client,"?AST\r\n");  
+                sendDone.WaitOne();  
 
                 bool ok = true;
                 int responseNumber = 0;
@@ -316,6 +327,186 @@ namespace PioPi
             , DSD_USB_DAC = 71
         }   
 
+        public static string GetLmResult(string lm)
+        {
+            string lmResult = "";
+            switch (lm)
+            {
+                case "0101": lmResult = "[)(]PLIIx MOVIE"; break;
+                case "0102": lmResult = "[)(]PLII MOVIE"; break;
+                case "0103": lmResult = "[)(]PLIIx MUSIC"; break;
+                case "0104": lmResult = "[)(]PLII MUSIC"; break;
+                case "0105": lmResult = "[)(]PLIIx GAME"; break;
+                case "0106": lmResult = "[)(]PLII GAME"; break;
+                case "0107": lmResult = "[)(]PROLOGIC"; break;
+                case "0108": lmResult = "Neo:6 CINEMA"; break;
+                case "0109": lmResult = "Neo:6 MUSIC"; break;
+                case "010a": lmResult = "XM HD Surround"; break;
+                case "010b": lmResult = "NEURAL SURR  "; break;
+                case "010c": lmResult = "2ch Straight Decode"; break;
+                case "010d": lmResult = "[)(]PLIIz HEIGHT"; break;
+                case "010e": lmResult = "WIDE SURR MOVIE"; break;
+                case "010f": lmResult = "WIDE SURR MUSIC"; break;
+                case "0110": lmResult = "STEREO"; break;
+                case "0111": lmResult = "Neo:X CINEMA"; break;
+                case "0112": lmResult = "Neo:X MUSIC"; break;
+                case "0113": lmResult = "Neo:X GAME"; break;
+                case "0114": lmResult = "NEURAL SURROUND+Neo:X CINEMA"; break;
+                case "0115": lmResult = "NEURAL SURROUND+Neo:X MUSIC"; break;
+                case "0116": lmResult = "NEURAL SURROUND+Neo:X GAMES"; break;
+                case "1101": lmResult = "[)(]PLIIx MOVIE"; break;
+                case "1102": lmResult = "[)(]PLIIx MUSIC"; break;
+                case "1103": lmResult = "[)(]DIGITAL EX"; break;
+                case "1104": lmResult = "DTS +Neo:6 / DTS-HD +Neo:6"; break;
+                case "1105": lmResult = "ES MATRIX"; break;
+                case "1106": lmResult = "ES DISCRETE"; break;
+                case "1107": lmResult = "DTS-ES 8ch "; break;
+                case "1108": lmResult = "multi ch Straight Decode"; break;
+                case "1109": lmResult = "[)(]PLIIz HEIGHT"; break;
+                case "110a": lmResult = "WIDE SURR MOVIE"; break;
+                case "110b": lmResult = "WIDE SURR MUSIC"; break;
+                case "110c": lmResult = "Neo:X CINEMA "; break;
+                case "110d": lmResult = "Neo:X MUSIC"; break;
+                case "110e": lmResult = "Neo:X GAME"; break;
+                case "0201": lmResult = "ACTION"; break;
+                case "0202": lmResult = "DRAMA"; break;
+                case "0203": lmResult = "SCI-FI"; break;
+                case "0204": lmResult = "MONOFILM"; break;
+                case "0205": lmResult = "ENT.SHOW"; break;
+                case "0206": lmResult = "EXPANDED"; break;
+                case "0207": lmResult = "TV SURROUND"; break;
+                case "0208": lmResult = "ADVANCEDGAME"; break;
+                case "0209": lmResult = "SPORTS"; break;
+                case "020a": lmResult = "CLASSICAL   "; break;
+                case "020b": lmResult = "ROCK/POP   "; break;
+                case "020c": lmResult = "UNPLUGGED   "; break;
+                case "020d": lmResult = "EXT.STEREO  "; break;
+                case "020e": lmResult = "PHONES SURR. "; break;
+                case "020f": lmResult = "FRONT STAGE SURROUND ADVANCE FOCUS"; break;
+                case "0210": lmResult = "FRONT STAGE SURROUND ADVANCE WIDE"; break;
+                case "0211": lmResult = "SOUND RETRIEVER AIR"; break;
+                case "0301": lmResult = "[)(]PLIIx MOVIE +THX"; break;
+                case "0302": lmResult = "[)(]PLII MOVIE +THX"; break;
+                case "0303": lmResult = "[)(]PL +THX CINEMA"; break;
+                case "0304": lmResult = "Neo:6 CINEMA +THX"; break;
+                case "0305": lmResult = "THX CINEMA"; break;
+                case "0306": lmResult = "[)(]PLIIx MUSIC +THX"; break;
+                case "0307": lmResult = "[)(]PLII MUSIC +THX"; break;
+                case "0308": lmResult = "[)(]PL +THX MUSIC"; break;
+                case "0309": lmResult = "Neo:6 MUSIC +THX"; break;
+                case "030a": lmResult = "THX MUSIC"; break;
+                case "030b": lmResult = "[)(]PLIIx GAME +THX"; break;
+                case "030c": lmResult = "[)(]PLII GAME +THX"; break;
+                case "030d": lmResult = "[)(]PL +THX GAMES"; break;
+                case "030e": lmResult = "THX ULTRA2 GAMES"; break;
+                case "030f": lmResult = "THX SELECT2 GAMES"; break;
+                case "0310": lmResult = "THX GAMES"; break;
+                case "0311": lmResult = "[)(]PLIIz +THX CINEMA"; break;
+                case "0312": lmResult = "[)(]PLIIz +THX MUSIC"; break;
+                case "0313": lmResult = "[)(]PLIIz +THX GAMES"; break;
+                case "0314": lmResult = "Neo:X CINEMA + THX CINEMA"; break;
+                case "0315": lmResult = "Neo:X MUSIC + THX MUSIC"; break;
+                case "0316": lmResult = "Neo:X GAMES + THX GAMES"; break;
+                case "1301": lmResult = "THX Surr EX"; break;
+                case "1302": lmResult = "Neo:6 +THX CINEMA"; break;
+                case "1303": lmResult = "ES MTRX +THX CINEMA"; break;
+                case "1304": lmResult = "ES DISC +THX CINEMA"; break;
+                case "1305": lmResult = "ES 8ch +THX CINEMA "; break;
+                case "1306": lmResult = "[)(]PLIIx MOVIE +THX"; break;
+                case "1307": lmResult = "THX ULTRA2 CINEMA"; break;
+                case "1308": lmResult = "THX SELECT2 CINEMA"; break;
+                case "1309": lmResult = "THX CINEMA"; break;
+                case "130a": lmResult = "Neo:6 +THX MUSIC"; break;
+                case "130b": lmResult = "ES MTRX +THX MUSIC"; break;
+                case "130c": lmResult = "ES DISC +THX MUSIC"; break;
+                case "130d": lmResult = "ES 8ch +THX MUSIC"; break;
+                case "130e": lmResult = "[)(]PLIIx MUSIC +THX"; break;
+                case "130f": lmResult = "THX ULTRA2 MUSIC"; break;
+                case "1310": lmResult = "THX SELECT2 MUSIC"; break;
+                case "1311": lmResult = "THX MUSIC"; break;
+                case "1312": lmResult = "Neo:6 +THX GAMES"; break;
+                case "1313": lmResult = "ES MTRX +THX GAMES"; break;
+                case "1314": lmResult = "ES DISC +THX GAMES"; break;
+                case "1315": lmResult = "ES 8ch +THX GAMES"; break;
+                case "1316": lmResult = "[)(]EX +THX GAMES"; break;
+                case "1317": lmResult = "THX ULTRA2 GAMES"; break;
+                case "1318": lmResult = "THX SELECT2 GAMES"; break;
+                case "1319": lmResult = "THX GAMES"; break;
+                case "131a": lmResult = "[)(]PLIIz +THX CINEMA"; break;
+                case "131b": lmResult = "[)(]PLIIz +THX MUSIC"; break;
+                case "131c": lmResult = "[)(]PLIIz +THX GAMES"; break;
+                case "131d": lmResult = "Neo:X CINEMA + THX CINEMA"; break;
+                case "131e": lmResult = "Neo:X MUSIC + THX MUSIC"; break;
+                case "131f": lmResult = "Neo:X GAME + THX GAMES"; break;
+                case "0401": lmResult = "STEREO"; break;
+                case "0402": lmResult = "[)(]PLII MOVIE"; break;
+                case "0403": lmResult = "[)(]PLIIx MOVIE"; break;
+                case "0404": lmResult = "Neo:6 CINEMA"; break;
+                case "0405": lmResult = "AUTO SURROUND Straight Decode"; break;
+                case "0406": lmResult = "[)(]DIGITAL EX"; break;
+                case "0407": lmResult = "[)(]PLIIx MOVIE"; break;
+                case "0408": lmResult = "DTS +Neo:6"; break;
+                case "0409": lmResult = "ES MATRIX"; break;
+                case "040a": lmResult = "ES DISCRETE"; break;
+                case "040b": lmResult = "DTS-ES 8ch "; break;
+                case "040c": lmResult = "XM HD Surround"; break;
+                case "040d": lmResult = "NEURAL SURR  "; break;
+                case "040e": lmResult = "RETRIEVER AIR"; break;
+                case "040f": lmResult = "Neo:X CINEMA"; break;
+                case "0410": lmResult = "Neo:X CINEMA "; break;
+                case "0501": lmResult = "STEREO"; break;
+                case "0502": lmResult = "[)(]PLII MOVIE"; break;
+                case "0503": lmResult = "[)(]PLIIx MOVIE"; break;
+                case "0504": lmResult = "Neo:6 CINEMA"; break;
+                case "0505": lmResult = "ALC Straight Decode"; break;
+                case "0506": lmResult = "[)(]DIGITAL EX"; break;
+                case "0507": lmResult = "[)(]PLIIx MOVIE"; break;
+                case "0508": lmResult = "DTS +Neo:6"; break;
+                case "0509": lmResult = "ES MATRIX"; break;
+                case "050a": lmResult = "ES DISCRETE"; break;
+                case "050b": lmResult = "DTS-ES 8ch "; break;
+                case "050c": lmResult = "XM HD Surround"; break;
+                case "050d": lmResult = "NEURAL SURR  "; break;
+                case "050e": lmResult = "RETRIEVER AIR"; break;
+                case "050f": lmResult = "Neo:X CINEMA"; break;
+                case "0510": lmResult = "Neo:X CINEMA "; break;
+                case "0601": lmResult = "STEREO"; break;
+                case "0602": lmResult = "[)(]PLII MOVIE"; break;
+                case "0603": lmResult = "[)(]PLIIx MOVIE"; break;
+                case "0604": lmResult = "Neo:6 CINEMA"; break;
+                case "0605": lmResult = "STREAM DIRECT NORMAL Straight Decode"; break;
+                case "0606": lmResult = "[)(]DIGITAL EX"; break;
+                case "0607": lmResult = "[)(]PLIIx MOVIE"; break;
+                case "0608": lmResult = "(nothing)"; break;
+                case "0609": lmResult = "ES MATRIX"; break;
+                case "060a": lmResult = "ES DISCRETE"; break;
+                case "060b": lmResult = "DTS-ES 8ch "; break;
+                case "060c": lmResult = "Neo:X CINEMA"; break;
+                case "060d": lmResult = "Neo:X CINEMA "; break;
+                case "0701": lmResult = "STREAM DIRECT PURE 2ch"; break;
+                case "0702": lmResult = "[)(]PLII MOVIE"; break;
+                case "0703": lmResult = "[)(]PLIIx MOVIE"; break;
+                case "0704": lmResult = "Neo:6 CINEMA"; break;
+                case "0705": lmResult = "STREAM DIRECT PURE Straight Decode"; break;
+                case "0706": lmResult = "[)(]DIGITAL EX"; break;
+                case "0707": lmResult = "[)(]PLIIx MOVIE"; break;
+                case "0708": lmResult = "(nothing)"; break;
+                case "0709": lmResult = "ES MATRIX"; break;
+                case "070a": lmResult = "ES DISCRETE"; break;
+                case "070b": lmResult = "DTS-ES 8ch "; break;
+                case "070c": lmResult = "Neo:X CINEMA"; break;
+                case "070d": lmResult = "Neo:X CINEMA "; break;
+                case "0881": lmResult = "OPTIMUM"; break;
+                case "0e01": lmResult = "HDMI THROUGH"; break;
+                case "0f01": lmResult = "MULTI CH IN"; break;
+                default:
+                    lmResult = $"UNKNOWN ({lm})";
+                    break;
+            }
+
+            return lmResult;
+            
+        }
         public static string DecodeResponse(string data,Socket client)
         {
             string result = "";
@@ -336,10 +527,12 @@ namespace PioPi
                 if (data == "PWR0")
                 {
                     newStatus = 1; //on
+                    result = "Power is ON";
                 }
                 else
                 {
                     newStatus = 0; //off
+                    result = "Power is OFF";
                 }
                 int deviceId = 148;
                 string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue={newStatus.ToString()}&svalue=";
@@ -413,8 +606,10 @@ namespace PioPi
             // InputSource
             if (data.StartsWith("AST")) 
             {
+                // AST6401000000000000000000000111111010000000000012400000000
+                string frequency = "";
                 InputAudioSignal inputAudioSignal = InputAudioSignal.Unknown;
-                if (Int32.TryParse(data.Substring(3), out int i))
+                if (Int32.TryParse(data.Substring(3,2), out int i))
                 {
                     try
                     {
@@ -424,9 +619,25 @@ namespace PioPi
                     {
                         //
                     }
+
+                    
+                    switch (data.Substring(5,2))
+                    {
+                        case "00": frequency = "32kHz"; break;
+                        case "01": frequency = "44.1kHz"; break;
+                        case "02": frequency = "48kHz"; break;
+                        case "03": frequency = "88.2kHz"; break;
+                        case "04": frequency = "96kHz"; break;
+                        case "05": frequency = "176.4kHz"; break;
+                        case "06": frequency = "192kHz"; break;
+                        case "07": frequency = "Unknown"; break;
+                        default:
+                            break;
+                    }
+
                 }
 
-                result = $"AudioSignalChange: {inputAudioSignal.ToString()}";
+                result = $"AudioSignalChange: {inputAudioSignal.ToString()} {frequency}";
 
             }
 
@@ -435,14 +646,20 @@ namespace PioPi
             { 
                 double volume = double.Parse(data.Substring(3));
                 volume = -80.5 + 0.5 * volume;
-                result = $"VOL: {volume.ToString()} dB [{data.Substring(3)}]";
+                result = $"Volume is set to {volume.ToString()} dB [{data.Substring(3)}]";
 
                 int deviceId = 90;
                 string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={volume.ToString()}";
                 SendApiCall(url).Wait(1000);
             }
 
-            // Display
+            // Display - Info
+            if (data.StartsWith("FL00")) 
+            { 
+                result = "FL00: " + Encoding.ASCII.GetString(ConvertStringToByteArray(data.Substring(4)));
+            }
+
+            // Display - Title
             if (data.StartsWith("FL02")) 
             { 
                 //result = "FL02: " + Encoding.ASCII.GetString(ConvertStringToByteArray(data.Substring(4)));
@@ -450,23 +667,80 @@ namespace PioPi
             }
 
 
+/*
+    -- Response NETWORK meta data
+    GBH*<CR+LF>
+    GCH*<CR+LF>
+    GDH*<CR+LF>
+    GEH*<CR+LF>"
+    GHH*<CR+LF>
+*/
+            if (data.StartsWith("GBH")) 
+            {
+                 //result = $"GBH: START `Response NETWORK meta data` ({result})";
+                 result = ""; // for now - Avoid SPAM
+            }
+            if (data.StartsWith("GHH")) 
+            {
+                 //result = $"GHH: END `Response NETWORK meta data` ({result})";
+                 result = ""; // for now - Avoid SPAM
+            }
+            if (data.StartsWith("GCH")) 
+            {
+                 result = "";
+            }
+            if (data.StartsWith("GDH")) 
+            {
+                 result = "";
+            }
+            
             // WebRadio Song
             // GEH01020"Lo Moon  - Real Love "
-            if (data.StartsWith("GEH01020")) 
+            if (data.StartsWith("GEH")) 
             { 
-                string song = data.Substring(8).Replace("\"","").Trim().Replace("  "," ").Replace("  "," ");
-                if (!String.IsNullOrWhiteSpace(song))
+                string text = null;
+                if (data.Length > 8) {text = data.Substring(8).Replace("\"","").Trim().Replace("  "," ").Replace("  "," ");}
+                result = "";
+
+                if (!String.IsNullOrWhiteSpace(text))
                 {
-                    if (_lastSong != song)
-                    {
-                        _lastSong = song;
-                        result = "NewWebRadioSong: " + song;
-                        int deviceId = 149;
-                        song = System.Net.WebUtility.UrlEncode(song);
-                        string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={song}";
-                        SendApiCall(url).Wait(1000);
+                    switch (data.Substring(0,8))
+                    { 
+                        case "GEH01020":  //Song
+                            if (_lastSong != text)
+                            {
+                                _lastSong = text;
+                                result = "NewWebRadioSong: " + text;
+                                int deviceId = 149;
+                                text = System.Net.WebUtility.UrlEncode(text);
+                                string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={text}";
+                                SendApiCall(url).Wait(1000);
+                            }
+                            break;
+                        case "GEH03021":  //Artist
+                            result = "NewArtist: " + text;
+                            break;
+                        case "GEH04022":  //Station
+                            result = "NewStation: " + text;
+                            break;
+                        default:
+                            break;
                     }
                 }
+            }
+
+
+            // LM020d ???
+            if (data.StartsWith("LM")) 
+            {
+                 result = $"Listening Mode: {GetLmResult(data.Substring(2))}";
+            }
+
+
+            // Ignore VTA and AU_
+            if (data.StartsWith("VTA") || data.StartsWith("AU")) 
+            {
+                 result = "";
             }
 
             if (!String.IsNullOrWhiteSpace(result))
