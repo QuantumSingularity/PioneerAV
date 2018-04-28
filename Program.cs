@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using System.Runtime.Loader;
 
 /*
     https://arnowelzel.de/wp/en/control-av-receivers-by-pioneer-over-the-network
@@ -41,11 +42,25 @@ namespace PioPi
 
             private static Socket _client = null;
 
+            public static void StopClient()
+            {
+                        // Release the socket.  
+                    _client.Shutdown(SocketShutdown.Both);  
+                    _client.Close();  
+                    _isRunning = false;
+            }
 
+            private static bool _isRunning = false;
+
+            public static bool IsRunning
+            {
+                get { return _isRunning; }
+            }
 
             private static void StartClient() {  
                 // Connect to a remote device.  
                 try {  
+                    _isRunning = true;
                     // Establish the remote endpoint for the socket.  
                     // The name of the   
                     // remote device is "host.contoso.com".  
@@ -68,12 +83,6 @@ namespace PioPi
                     // Begin receiving the data from the remote device.  
                     _client.BeginReceive( state.buffer, 0, StateObject.BufferSize, 0, new AsyncCallback(ReceiveCallback), state);  
 
-
-
-                    // Send test data to the remote device.  VOLUMESTATUS
-                    Send("?V\r\n");  
-                    sendDone.WaitOne();  
-
                     // Send test data to the remote device.  POWERSTATUS
                     Send("?P\r\n");  
                     sendDone.WaitOne();  
@@ -82,24 +91,17 @@ namespace PioPi
                     Send("?AST\r\n");  
                     sendDone.WaitOne();  
 
+                    // Send test data to the remote device.  INPUTSOURCE
+                    Send("?F\r\n");  
+                    sendDone.WaitOne();  
 
-                    /*
-                    bool ok = true;
-                    while (ok)
-                    {
-                        Thread.Sleep(1000);
-                    }
-                    */
-                    
-                    // Wait for [ENTER]
-                    Console.ReadLine();
-
-                    // Release the socket.  
-                    _client.Shutdown(SocketShutdown.Both);  
-                    _client.Close();  
+                    // Send test data to the remote device.  VOLUMESTATUS
+                    Send("?V\r\n");  
+                    sendDone.WaitOne();  
 
                 } catch (Exception e) {  
                     Console.WriteLine(e.ToString());  
+                    _isRunning = false;
                 }  
             }  
 
@@ -197,9 +199,13 @@ namespace PioPi
             }  
 
 
-            public static PioVSX _pioVSX;
+            public static IReceiver _pioVSX;
 
             public static int Main(String[] args) {  
+
+                AssemblyLoadContext.Default.Unloading += SigTermEventHandler; //register sigterm event handler. Don't forget to import System.Runtime.Loader!
+                Console.CancelKeyPress += CancelHandler; //register sigint event handler
+
 
                 _pioVSX = new PioVSX();
                 _pioVSX.SendInformationEvent += InformationEventHandler;
@@ -207,12 +213,31 @@ namespace PioPi
 
                 StartClient();  
 
+                while (IsRunning)
+                {
+                    Thread.Sleep(2000);
+                }
+
                 _pioVSX.SendInformationEvent -= InformationEventHandler;
                 _pioVSX.SendResponseEvent -= ResponseEventHandler;
                 _pioVSX = null;
 
                 return 0;  
             }  
+
+            private static void SigTermEventHandler(AssemblyLoadContext obj)
+            {
+                System.Console.WriteLine("Unloading...");
+                StopClient();
+            }
+
+            private static void CancelHandler(object sender, ConsoleCancelEventArgs e)
+            {	     
+                System.Console.WriteLine("Exiting...");
+                StopClient();
+            }
+
+
 
             public static int _responseNumber = 0;
             public static void DataReceived(string data)
@@ -225,7 +250,7 @@ namespace PioPi
                 _responseNumber +=1;
                 if (!String.IsNullOrWhiteSpace(e.Data))
                 {
-                    Console.WriteLine($"{_responseNumber.ToString()}: {e.Data}");  
+                    Console.WriteLine($"{_responseNumber.ToString("00000")} {DateTime.Now.ToString("yyyyMMdd.HHmmss")}: {e.Data}");  
                 }
             }
             public static void ResponseEventHandler(Object sender, SendResponseEventArgs e)

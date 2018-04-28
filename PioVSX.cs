@@ -7,6 +7,19 @@ using System.Threading.Tasks;
 
 namespace PioPi
 {
+
+    public delegate void InformationEventHandler(Object sender, InfoEventArgs e);
+    public delegate void ResponseEventHandler(Object sender, SendResponseEventArgs e);
+
+    public interface IReceiver
+    {
+            event InformationEventHandler SendInformationEvent;
+            event ResponseEventHandler SendResponseEvent;
+
+            void ProcessData(string data);
+
+    }
+
     public class InfoEventArgs : EventArgs
     {
         public InfoEventArgs(string data) { Data = data;}
@@ -23,13 +36,10 @@ namespace PioPi
     }
 
 
-    public class PioVSX
+    public class PioVSX : IReceiver
     {
 
         #region Events
-        
-            public delegate void InformationEventHandler(Object sender, InfoEventArgs e);
-            public delegate void ResponseEventHandler(Object sender, SendResponseEventArgs e);
 
             public event InformationEventHandler SendInformationEvent;
             public event ResponseEventHandler SendResponseEvent;
@@ -57,8 +67,25 @@ namespace PioPi
 
 
         public string _lastSong {get; private set;}
+        public string _lastStation {get; private set;}
 
+        public enum DomoticzDevices
+        {
 
+            /*
+            // Domoticz API Call
+            // https://www.domoticz.com/wiki/Domoticz_API/JSON_URL%27s
+            // DeviceId == 90
+            // eg. http://192.168.1.2:8080/json.htm?type=command&param=udevice&idx=$idx&nvalue=0&svalue=79
+            // VSX1123-Volume        id==90
+            // VSX1123-PowerStatus   id==148
+            // VSX1123-LastSong      id==149
+            */
+
+            VSX1123_Volume        = 90,
+            VSX1123_PowerStatus   = 148,
+            VSX1123_LastSong      = 149
+        }
 
         public void ProcessData(string data)
         {
@@ -74,15 +101,7 @@ namespace PioPi
                 string result = "";
                 result = data;
 
-                /*
-                // Domoticz API Call
-                // https://www.domoticz.com/wiki/Domoticz_API/JSON_URL%27s
-                // DeviceId == 90
-                // eg. http://192.168.1.2:8080/json.htm?type=command&param=udevice&idx=$idx&nvalue=0&svalue=79
-                // VSX1123-Volume        id==90
-                // VSX1123-PowerStatus   id==148
-                // VSX1123-CurrentSource id==149
-                */
+
 
                 // PowerStatus
                 if (data.StartsWith("PWR")) 
@@ -97,6 +116,8 @@ namespace PioPi
                     {
                         newStatus = 0; //off
                         result = "Power is OFF";
+                        _lastSong = "";
+                        _lastStation = "";
                     }
                     int deviceId = 148;
                     string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue={newStatus.ToString()}&svalue=";
@@ -120,12 +141,12 @@ namespace PioPi
                         }
                     }
 
-                    double newVolume = -1;
+                    double newVolume = 0;
                     switch (inputSource)
                     {
                         case InputSource.INTERNET_RADIO:
                         case InputSource.FAVORITES:
-                            newVolume = -55;
+                            newVolume = -60;
                             break;
                         case InputSource.SAT_CBL: //DreamBox
                             newVolume = -30;
@@ -269,7 +290,7 @@ namespace PioPi
                         switch (data.Substring(0,8))
                         { 
                             case "GEH01020":  //Song
-                                if (_lastSong != text)
+                                if (_lastSong != text && !text.StartsWith("(c)"))
                                 {
                                     _lastSong = text;
                                     result = "NewWebRadioSong: " + text;
@@ -283,7 +304,11 @@ namespace PioPi
                                 result = "NewArtist: " + text;
                                 break;
                             case "GEH04022":  //Station
-                                result = "NewStation: " + text;
+                                if (_lastStation != text)
+                                {
+                                    _lastStation = text;
+                                     result = "NewStation: " + text;
+                                }
                                 break;
                             default:
                                 break;
