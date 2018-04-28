@@ -1,0 +1,22 @@
+https://www.domoticz.com/wiki/Domoticz_API/JSON_URL%27s
+-------------------------------------------------------
+
+1 device:
+http://domoticz.bem.lan/json.htm?type=devices&rid=IDX
+
+Get all devices of a certain type:
+http://domoticz.bem.lan/json.htm?type=devices&filter=all&used=true&order=Name
+
+This will return information about all the devices. If you want to retrieve information for a certain devicetype, you can use the following filters:
+light = Get all lights/switches
+weather = Get all weather devices
+temp = Get all temperature devices
+utility = Get all utility devices
+
+
+Get all Favorite devices:
+http://domoticz.bem.lan/json.htm?type=devices&used=true&filter=all&favorite=1
+
+
+
+

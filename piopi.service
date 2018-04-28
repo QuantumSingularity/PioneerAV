@@ -1,0 +1,10 @@
+[Unit]
+Description=PioPi service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/dotnet /home/bem/Projects/BeM_Apps/PioPi/bin/Debug/netcoreapp2.0/PioPi.dll
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
