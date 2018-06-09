@@ -68,6 +68,9 @@ namespace PioPi
 
         public string _lastSong {get; private set;}
         public string _lastStation {get; private set;}
+        public InputSource _lastInputSource {get; private set;} = InputSource.Unknown;
+        public double _lastVolume {get; private set;} = 0;
+        public int _lastPowerStatus = -1;
 
         public enum DomoticzDevices
         {
@@ -110,18 +113,46 @@ namespace PioPi
                     if (data == "PWR0")
                     {
                         newStatus = 1; //on
-                        result = "Power is ON";
+                        
                     }
                     else
                     {
                         newStatus = 0; //off
-                        result = "Power is OFF";
+                        
                         _lastSong = "";
                         _lastStation = "";
+                        _lastInputSource = InputSource.Unknown;
+                        _lastVolume = 0;
                     }
-                    int deviceId = 148;
-                    string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue={newStatus.ToString()}&svalue=";
-                    SendApiCall(url).Wait(1000);
+
+                    if (newStatus != _lastPowerStatus)
+                    {
+                        int deviceId = 148;
+                        string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue={newStatus.ToString()}&svalue=";
+                        SendApiCall(url).Wait(1000);
+
+                        _lastPowerStatus = newStatus;
+
+                        if (newStatus == 1)
+                        {
+                            result = "Power is ON";
+                        }
+                        else
+                        {
+                            result = "Power is OFF";
+                        }
+                    }
+                    else
+                    {
+                        if (newStatus == 1)
+                        {
+                            result = "Power is ON, Status Unchanged!";
+                        }
+                        else
+                        {
+                            result = "Power is OFF, Status Unchanged!";
+                        }
+                    }
 
                 }
 
@@ -164,23 +195,33 @@ namespace PioPi
                             newVolume = -60;
                             break;
                     }
-                    if (newVolume < 0)
+                    if (inputSource != _lastInputSource)
                     {
+                        if (newVolume < 0)
+                        {
 
-                        result = $"SourceChange: {inputSource.ToString()} - Setting Volume to {newVolume.ToString()} dB.";
-                        // Send test data to the remote device.  
-                        // -58 dB [045]
+                            //int volume = -80.5 + 0.5 * newVolume;
+                            int volume = Math.Abs((int)((80.5 + newVolume) * 2));
 
-                        //int volume = -80.5 + 0.5 * newVolume;
-                        int volume = Math.Abs((int)((80.5 + newVolume) * 2));
-                        
-                        result += $" --> Will be: VOL{volume.ToString("000")}";
-                        RaiseSendResponseHandler($"{volume.ToString("000")}VL", 500);  
+                            if (volume != _lastVolume)
+                            {
+                                result = $"SourceChange: {inputSource.ToString()} - Setting Volume to {newVolume.ToString()} dB.";
+                                // Send test data to the remote device.  
+                                // -58 dB [045]
 
-                    }
-                    else
-                    {
-                        result = $"SourceChange: {inputSource.ToString()}";
+                                
+                                result += $" --> Will be: VOL{volume.ToString("000")}";
+                                RaiseSendResponseHandler($"{volume.ToString("000")}VL", 500);  
+
+                            }
+
+                        }
+                        else
+                        {
+                            result = $"SourceChange: {inputSource.ToString()}";
+                        }
+
+                        _lastInputSource = inputSource;
                     }
 
                 }
@@ -229,11 +270,22 @@ namespace PioPi
                 { 
                     double volume = double.Parse(data.Substring(3));
                     volume = -80.5 + 0.5 * volume;
-                    result = $"Volume is set to {volume.ToString()} dB [{data.Substring(3)}]";
 
-                    int deviceId = 90;
-                    string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={volume.ToString()}";
-                    SendApiCall(url).Wait(1000);
+                    if (volume != _lastVolume)
+                    {
+                        result = $"Volume is set to {volume.ToString()} dB [{data.Substring(3)}]";
+                        _lastVolume = volume;
+
+                        int deviceId = 90;
+                        string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={volume.ToString()}";
+                        SendApiCall(url).Wait(1000);
+
+                    }
+                    else
+                    {
+                        result = $"Volume is set to {volume.ToString()} dB [{data.Substring(3)}], Unchanged.";
+                    }
+
                 }
 
                 // Display - Info
@@ -332,7 +384,7 @@ namespace PioPi
 
                 if (!String.IsNullOrWhiteSpace(result))
                 {
-                    System.IO.File.AppendAllText("PioPi.log",$"{DateTime.Now.ToString("yyyMMdd.HHmmss")}: {result}\r\n");
+                    System.IO.File.AppendAllText("/home/bem/Projects/PioPi.log",$"{DateTime.Now.ToString("yyyMMdd.HHmmss")}: {result}\r\n");
                 }
 
                 return result;
