@@ -210,6 +210,7 @@ namespace PioPi
                 _pioVSX = new PioVSX();
                 _pioVSX.SendInformationEvent += InformationEventHandler;
                 _pioVSX.SendResponseEvent += ResponseEventHandler;
+                _pioVSX.Start();
 
                 StartClient();  
 
@@ -218,6 +219,7 @@ namespace PioPi
                     Thread.Sleep(2000);
                 }
 
+                _pioVSX.Stop();
                 _pioVSX.SendInformationEvent -= InformationEventHandler;
                 _pioVSX.SendResponseEvent -= ResponseEventHandler;
                 _pioVSX = null;

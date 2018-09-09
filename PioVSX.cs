@@ -13,10 +13,14 @@ namespace PioPi
 
     public interface IReceiver
     {
-            event InformationEventHandler SendInformationEvent;
-            event ResponseEventHandler SendResponseEvent;
+        event InformationEventHandler SendInformationEvent;
+        event ResponseEventHandler SendResponseEvent;
 
-            void ProcessData(string data);
+        void ProcessData(string data);
+
+
+        void Start();
+        void Stop();
 
     }
 
@@ -62,9 +66,22 @@ namespace PioPi
 
         public PioVSX()
         {
-
         }
 
+        public void Start()
+        {
+            _mqtt = new MQTT();
+            _mqtt.Start().Wait();
+            //_mqtt.WaitForConnection(5000);
+        }
+
+        public void Stop()
+        {
+            _mqtt.Stop().Wait();
+            _mqtt = null;
+        }
+
+        protected MQTT _mqtt;
 
         public string _lastSong {get; private set;}
         public string _lastStation {get; private set;}
@@ -99,6 +116,14 @@ namespace PioPi
                 }
         }
 
+        protected void SendToMqtt(string topic, string payload)
+        {
+            if (_mqtt != null && _mqtt.IsStarted)
+            {
+                _mqtt.Publish($"PioPi/{topic}",payload).Wait();
+            }
+        }
+
             private string DecodeResponse(string data)
             {
                 string result = "";
@@ -127,20 +152,23 @@ namespace PioPi
 
                     if (newStatus != _lastPowerStatus)
                     {
-                        int deviceId = 148;
-                        string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue={newStatus.ToString()}&svalue=";
-                        SendApiCall(url).Wait(1000);
-
-                        _lastPowerStatus = newStatus;
-
                         if (newStatus == 1)
                         {
                             result = "Power is ON";
+                            SendToMqtt("Power","on");
                         }
                         else
                         {
                             result = "Power is OFF";
+                            SendToMqtt("Power","off");
                         }
+
+                        _lastPowerStatus = newStatus;
+
+                        int deviceId = 148;
+                        string url = $"http://rpi2a.bem.lan:8080/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue={newStatus.ToString()}&svalue=";
+                        SendApiCall(url).Wait(1000);
+
                     }
                     else
                     {
@@ -221,6 +249,8 @@ namespace PioPi
                             result = $"SourceChange: {inputSource.ToString()}";
                         }
 
+                        SendToMqtt("Source", inputSource.ToString());
+
                         _lastInputSource = inputSource;
                     }
 
@@ -277,8 +307,10 @@ namespace PioPi
                         _lastVolume = volume;
 
                         int deviceId = 90;
-                        string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={volume.ToString()}";
+                        string url = $"http://rpi2a.bem.lan:8080/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={volume.ToString()}";
                         SendApiCall(url).Wait(1000);
+
+                        SendToMqtt("Volume", volume.ToString());
 
                     }
                     else
@@ -348,8 +380,11 @@ namespace PioPi
                                     result = "NewWebRadioSong: " + text;
                                     int deviceId = 149;
                                     text = System.Net.WebUtility.UrlEncode(text);
-                                    string url = $"http://domoticz.bem.lan/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={text}";
+                                    string url = $"http://rpi2a.bem.lan:8080/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={text}";
                                     SendApiCall(url).Wait(1000);
+
+                                    SendToMqtt("WebRadioSong", text);
+
                                 }
                                 break;
                             case "GEH03021":  //Artist
@@ -408,7 +443,8 @@ namespace PioPi
                     }
                     catch (Exception ex)
                     {
-                        string q = "";
+                        //string q = "";
+                        Console.WriteLine($"=====\n{ex.Message}\r\n{ex.StackTrace}\n===========");
                     }
 
 
