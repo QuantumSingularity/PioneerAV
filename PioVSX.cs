@@ -86,8 +86,10 @@ namespace PioPi
         public string _lastSong {get; private set;}
         public string _lastStation {get; private set;}
         public InputSource _lastInputSource {get; private set;} = InputSource.Unknown;
+        public InputAudioSignal _inputAudioSignal {get; private set;} = InputAudioSignal.Unknown;
         public double _lastVolume {get; private set;} = 0;
         public int _lastPowerStatus = -1;
+        public string _lastListeningMode {get; private set;}
 
         public enum DomoticzDevices
         {
@@ -148,6 +150,7 @@ namespace PioPi
                         _lastStation = "";
                         _lastInputSource = InputSource.Unknown;
                         _lastVolume = 0;
+                        _lastListeningMode = "";
                     }
 
                     if (newStatus != _lastPowerStatus)
@@ -161,6 +164,12 @@ namespace PioPi
                         {
                             result = "Power is OFF";
                             SendToMqtt("Power","off");
+                            SendToMqtt("Source", "");
+                            SendToMqtt("Volume", "-80.5");
+                            SendToMqtt("WebRadioSong", "");
+                            SendToMqtt("WebRadioStation", "");
+                            SendToMqtt("ListeningMode", "");
+                            SendToMqtt("InputAudioSignal", "");
                         }
 
                         _lastPowerStatus = newStatus;
@@ -200,31 +209,43 @@ namespace PioPi
                         }
                     }
 
-                    double newVolume = 0;
-                    switch (inputSource)
-                    {
-                        case InputSource.INTERNET_RADIO:
-                        case InputSource.FAVORITES:
-                            newVolume = -60;
-                            break;
-                        case InputSource.SAT_CBL: //DreamBox
-                            newVolume = -30;
-                            break;
-                        case InputSource.BD:  //Kodi
-                            newVolume = -30;
-                            break;
-                        case InputSource.DVR_BDR:  //ChromeCast
-                            newVolume = -40;
-                            break;
-                        case InputSource.TUNER:  //Tuner
-                            newVolume = -40;
-                            break;
-                        default:
-                            newVolume = -60;
-                            break;
-                    }
                     if (inputSource != _lastInputSource)
                     {
+
+                        bool isWebRadio = false;
+                        double newVolume = 0;
+                        switch (inputSource)
+                        {
+                            case InputSource.INTERNET_RADIO:
+                            case InputSource.FAVORITES:
+                                newVolume = -60;
+                                isWebRadio = true;
+                                break;
+                            case InputSource.SAT_CBL: //DreamBox
+                                newVolume = -30;
+                                break;
+                            case InputSource.BD:  //Kodi
+                                newVolume = -30;
+                                break;
+                            case InputSource.DVR_BDR:  //ChromeCast
+                                newVolume = -40;
+                                break;
+                            case InputSource.TUNER:  //Tuner
+                                newVolume = -40;
+                                break;
+                            default:
+                                newVolume = -60;
+                                break;
+                        }
+
+                        if (!isWebRadio)
+                        {
+                            SendToMqtt("WebRadioSong", "");
+                            SendToMqtt("WebRadioStation", "");
+                            _lastStation = "";
+                            _lastSong = "";
+                        }
+
                         if (newVolume < 0)
                         {
 
@@ -292,6 +313,12 @@ namespace PioPi
                     }
 
                     result = $"AudioSignalChange: {inputAudioSignal.ToString()} {frequency}";
+
+                    if (inputAudioSignal != _inputAudioSignal)
+                    {
+                        _inputAudioSignal = inputAudioSignal;
+                        SendToMqtt("InputAudioSignal", inputAudioSignal.ToString());
+                    }
 
                 }
 
@@ -384,7 +411,6 @@ namespace PioPi
                                     SendApiCall(url).Wait(1000);
 
                                     SendToMqtt("WebRadioSong", text);
-
                                 }
                                 break;
                             case "GEH03021":  //Artist
@@ -395,6 +421,9 @@ namespace PioPi
                                 {
                                     _lastStation = text;
                                      result = "NewStation: " + text;
+
+                                    SendToMqtt("WebRadioStation", text);
+
                                 }
                                 break;
                             default:
@@ -407,7 +436,13 @@ namespace PioPi
                 // LM020d ???
                 if (data.StartsWith("LM")) 
                 {
-                    result = $"Listening Mode: {GetLmResult(data.Substring(2))}";
+                    string listeningMode = GetLmResult(data.Substring(2));
+                    if (listeningMode != _lastListeningMode)
+                    {
+                        result = $"Listening Mode: {listeningMode}";
+                        SendToMqtt("ListeningMode", listeningMode);
+                        _lastListeningMode = listeningMode;
+                    }
                 }
 
 

@@ -121,16 +121,29 @@ namespace PioPi
 
         public async Task<bool> Publish(string topic, string payload)
         {
-            var message = new MqttApplicationMessageBuilder()
-                .WithTopic(topic)
-                .WithPayload(payload)
-                .WithExactlyOnceQoS()
-                .WithRetainFlag()
-                .Build();
-    
-            await _mqttClient.PublishAsync(message);
 
-            return true;
+            if (_mqttClient.IsConnected)
+            {
+                if (payload.Length > 10 && payload.Contains("+"))
+                {
+                    payload = System.Net.WebUtility.UrlDecode(payload);
+                }
+
+                var message = new MqttApplicationMessageBuilder()
+                    .WithTopic(topic)
+                    .WithPayload(payload)
+                    .WithExactlyOnceQoS()
+                    .WithRetainFlag()
+                    .Build();
+        
+                await _mqttClient.PublishAsync(message);
+
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
 
         public bool IsStarted

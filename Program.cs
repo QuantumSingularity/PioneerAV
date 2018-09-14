@@ -99,6 +99,10 @@ namespace PioPi
                     Send("?V\r\n");  
                     sendDone.WaitOne();  
 
+                    // Send test data to the remote device.  LISTENINGMODE
+                    Send("?L\r\n");  
+                    sendDone.WaitOne();  
+
                 } catch (Exception e) {  
                     Console.WriteLine(e.ToString());  
                     _isRunning = false;
