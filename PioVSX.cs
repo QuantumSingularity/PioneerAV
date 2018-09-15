@@ -89,7 +89,7 @@ namespace PioPi
         public string _lastStation {get; private set;} = "";
         public InputSource _lastInputSource {get; private set;} = InputSource.Unknown;
         public InputAudioSignal _lastInputAudioSignal {get; private set;} = InputAudioSignal.Unknown;
-        public double _lastVolume {get; private set;} = -1;
+        public double _lastVolume {get; private set;} = -80.5;
         public int _lastPowerStatus = -1;
         public string _lastListeningMode {get; private set;} = "";
 
@@ -252,22 +252,8 @@ namespace PioPi
 
                         if (newVolume < 0)
                         {
-
-                            //int volume = -80.5 + 0.5 * newVolume;
-                            int volume = Math.Abs((int)((80.5 + newVolume) * 2));
-
-                            if (volume != _lastVolume)
-                            {
-                                result = $"SourceChange: {inputSource.ToString()} - Setting Volume to {newVolume.ToString()} dB.";
-                                // Send test data to the remote device.  
-                                // -58 dB [045]
-
-                                
-                                result += $" --> Will be: VOL{volume.ToString("000")}";
-                                RaiseSendResponseHandler($"{volume.ToString("000")}VL", 500);  
-
-                            }
-
+                            result = "SourceChange: {inputSource.ToString()} - ";
+                            result += SetVolume(newVolume);
                         }
                         else
                         {
@@ -331,6 +317,8 @@ namespace PioPi
                 { 
                     double volume = double.Parse(data.Substring(3));
                     volume = -80.5 + 0.5 * volume;
+
+                    IsVolumeChangeProcessed = true;
 
                     if (volume != _lastVolume)
                     {
@@ -777,22 +765,64 @@ namespace PioPi
             }
         }
 
+protected bool IsVolumeChangeProcessed = false;
+
+
+        protected string SetVolume(Double newVolume)
+        {
+            string result = "";
+
+            if (!IsVolumeChangeProcessed)
+            {
+                result = "!IsVolumeChangeProcessed";
+            }
+            else
+            {
+                // check it !!!
+                int volume = Math.Abs((int)((80.5 + newVolume) * 2));
+
+                if (volume != _lastVolume)
+                {
+                    result = $"Setting Volume to {newVolume.ToString()} dB.\r\n--> Will be: VOL{volume.ToString("000")}";
+                    RaiseSendResponseHandler($"{volume.ToString("000")}VL", 500);  
+                }       
+                else
+                {
+                    result = $"Volume is Unchanged.";
+                }
+            }     
+            return result;
+        }
+
             protected void ResponseEventHandler(Object sender, ApplicationMessageReceivedEventArgs e)
             {
                 if (!String.IsNullOrWhiteSpace(e.Topic) && !String.IsNullOrWhiteSpace(e.Payload))
                 {
-                    //                    
-                    if (e.Topic == "HomeAssistant/PioPi/Power/set")
+                    switch (e.Topic )
                     {
-                        int newStatus = -1;
-                        if (e.Payload == "on") { newStatus = 1;}
-                        if (e.Payload == "off") { newStatus = 0;}
+                        case "HomeAssistant/PioPi/Power/set":
+                            int newStatus = -1;
+                            if (e.Payload == "on") { newStatus = 1;}
+                            if (e.Payload == "off") { newStatus = 0;}
 
-                        if (newStatus >= 0 && newStatus != _lastPowerStatus)
-                        {
-                            SetPower(newStatus);
-                        }
+                            if (newStatus >= 0 && newStatus != _lastPowerStatus)
+                            {
+                                SetPower(newStatus);
+                            }
+                            break;
+
+                        case "HomeAssistant/PioPi/Volume/Set":
+                            try
+                            {
+                                SetVolume(Double.Parse(e.Payload));
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"MQTT-Volume-Exception: {ex.ToString()}");
+                            }
+                            break;
                     }
+
                 }
 
             }

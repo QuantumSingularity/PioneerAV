@@ -104,13 +104,14 @@ namespace PioPi
 
                 // Subscribe to a topic
                 //await _mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic("/EspEasy_Meterkast/BME280/Pressure").Build());
+                await _mqttClient.SubscribeAsync("HomeAssistant/PioPi/Power/set");
+                await _mqttClient.SubscribeAsync("HomeAssistant/PioPi/Volume/Set");
+                // HomeAssistant/PioPi/Volume/Set^M
 
                 //Console.WriteLine("### SUBSCRIBED ###");
             };
 
             await _mqttClient.ConnectAsync(options);
-
-            await _mqttClient.SubscribeAsync("HomeAssistant/PioPi/Power/set");
 
 
     //        Console.ReadLine();
