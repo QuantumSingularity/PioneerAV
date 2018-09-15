@@ -71,6 +71,7 @@ namespace PioPi
         public void Start()
         {
             _mqtt = new MQTT();
+            _mqtt.SendApplicationMessageReceivedHandler += ResponseEventHandler;
             _mqtt.Start().Wait();
             //_mqtt.WaitForConnection(5000);
         }
@@ -78,18 +79,19 @@ namespace PioPi
         public void Stop()
         {
             _mqtt.Stop().Wait();
+            _mqtt.SendApplicationMessageReceivedHandler -= ResponseEventHandler;
             _mqtt = null;
         }
 
         protected MQTT _mqtt;
 
-        public string _lastSong {get; private set;}
-        public string _lastStation {get; private set;}
+        public string _lastSong {get; private set;} = "";
+        public string _lastStation {get; private set;} = "";
         public InputSource _lastInputSource {get; private set;} = InputSource.Unknown;
-        public InputAudioSignal _inputAudioSignal {get; private set;} = InputAudioSignal.Unknown;
-        public double _lastVolume {get; private set;} = 0;
+        public InputAudioSignal _lastInputAudioSignal {get; private set;} = InputAudioSignal.Unknown;
+        public double _lastVolume {get; private set;} = -1;
         public int _lastPowerStatus = -1;
-        public string _lastListeningMode {get; private set;}
+        public string _lastListeningMode {get; private set;} = "";
 
         public enum DomoticzDevices
         {
@@ -120,7 +122,7 @@ namespace PioPi
 
         protected void SendToMqtt(string topic, string payload)
         {
-            if (_mqtt != null && _mqtt.IsStarted)
+            if (_lastPowerStatus == 1 && _mqtt != null && _mqtt.IsStarted)
             {
                 _mqtt.Publish($"PioPi/{topic}",payload).Wait();
             }
@@ -149,14 +151,17 @@ namespace PioPi
                         _lastSong = "";
                         _lastStation = "";
                         _lastInputSource = InputSource.Unknown;
+                        _lastInputAudioSignal = InputAudioSignal.Unknown;
                         _lastVolume = 0;
                         _lastListeningMode = "";
                     }
 
                     if (newStatus != _lastPowerStatus)
                     {
+
                         if (newStatus == 1)
                         {
+                            _lastPowerStatus = newStatus;
                             result = "Power is ON";
                             SendToMqtt("Power","on");
                         }
@@ -170,9 +175,8 @@ namespace PioPi
                             SendToMqtt("WebRadioStation", "");
                             SendToMqtt("ListeningMode", "");
                             SendToMqtt("InputAudioSignal", "");
+                            _lastPowerStatus = newStatus;
                         }
-
-                        _lastPowerStatus = newStatus;
 
                         int deviceId = 148;
                         string url = $"http://rpi2a.bem.lan:8080/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue={newStatus.ToString()}&svalue=";
@@ -314,9 +318,9 @@ namespace PioPi
 
                     result = $"AudioSignalChange: {inputAudioSignal.ToString()} {frequency}";
 
-                    if (inputAudioSignal != _inputAudioSignal)
+                    if (inputAudioSignal != _lastInputAudioSignal)
                     {
-                        _inputAudioSignal = inputAudioSignal;
+                        _lastInputAudioSignal = inputAudioSignal;
                         SendToMqtt("InputAudioSignal", inputAudioSignal.ToString());
                     }
 
@@ -754,6 +758,46 @@ namespace PioPi
             return lmResult;
             
         }
+
+        protected void SetPower(int newStatus)
+        {
+            if (newStatus >= 0 && newStatus != _lastPowerStatus)
+            {
+                switch (newStatus)
+                {
+                    case 0:
+                        RaiseSendResponseHandler($"PF", 0);                 
+                        break;
+                    case 1:
+                        RaiseSendResponseHandler($"PO", 0);                 
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+
+            protected void ResponseEventHandler(Object sender, ApplicationMessageReceivedEventArgs e)
+            {
+                if (!String.IsNullOrWhiteSpace(e.Topic) && !String.IsNullOrWhiteSpace(e.Payload))
+                {
+                    //                    
+                    if (e.Topic == "HomeAssistant/PioPi/Power/set")
+                    {
+                        int newStatus = -1;
+                        if (e.Payload == "on") { newStatus = 1;}
+                        if (e.Payload == "off") { newStatus = 0;}
+
+                        if (newStatus >= 0 && newStatus != _lastPowerStatus)
+                        {
+                            SetPower(newStatus);
+                        }
+                    }
+                }
+
+            }
+
+
 
     }
 
