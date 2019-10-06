@@ -64,8 +64,13 @@ namespace PioPi
 
         #endregion
 
-        public PioVSX()
+        private List<InputSourceProperties> _inputSourceProperties;
+        private string _logFile = "";
+
+        public PioVSX(List<InputSourceProperties> inputSourceProperties, string logFile)
         {
+            _inputSourceProperties = inputSourceProperties;
+            _logFile = logFile;
         }
 
         public void Start()
@@ -218,29 +223,56 @@ namespace PioPi
 
                         bool isWebRadio = false;
                         double newVolume = 0;
+
+                        InputSourceProperties inputSourceProperties = _inputSourceProperties.FirstOrDefault(q => q.Source == inputSource);
+
+                        string inputName = inputSource.ToString();
+
+                        if (inputSourceProperties != null)
+                        {
+                            newVolume = inputSourceProperties.Volume;
+                            isWebRadio = inputSourceProperties.IsWebradio;
+                            inputName = inputSourceProperties.Name;
+                        }
+                        else
+                        {
+                            newVolume = -60;
+                        }
+
+                        /*
                         switch (inputSource)
                         {
                             case InputSource.INTERNET_RADIO:
                             case InputSource.FAVORITES:
                                 newVolume = -60;
                                 isWebRadio = true;
+                                inputName = "WebRadio";
                                 break;
                             case InputSource.SAT_CBL: //DreamBox
-                                newVolume = -30;
+                                newVolume = -60;
+                                inputName = "Volumio";
                                 break;
                             case InputSource.BD:  //Kodi
                                 newVolume = -30;
+                                inputName = "Kodi";
                                 break;
                             case InputSource.DVR_BDR:  //ChromeCast
                                 newVolume = -40;
+                                inputName = "ChromeCast";
+                                break;
+                            case InputSource.DVD:  //AndroidTV
+                                newVolume = -30;
+                                inputName = "AndroidTV";
                                 break;
                             case InputSource.TUNER:  //Tuner
                                 newVolume = -40;
+                                inputName = "Tuner";
                                 break;
                             default:
                                 newVolume = -60;
                                 break;
                         }
+                        */
 
                         if (!isWebRadio)
                         {
@@ -252,15 +284,15 @@ namespace PioPi
 
                         if (newVolume < 0)
                         {
-                            result = "SourceChange: {inputSource.ToString()} - ";
-                            result += SetVolume(newVolume);
+                            result = $"SourceChange: {inputSource.ToString()} - ";
+                            result += SetVolume(newVolume, "VSX-1123");
                         }
                         else
                         {
                             result = $"SourceChange: {inputSource.ToString()}";
                         }
 
-                        SendToMqtt("Source", inputSource.ToString());
+                        SendToMqtt("Source", inputName);
 
                         _lastInputSource = inputSource;
                     }
@@ -317,8 +349,6 @@ namespace PioPi
                 { 
                     double volume = double.Parse(data.Substring(3));
                     volume = -80.5 + 0.5 * volume;
-
-                    IsVolumeChangeProcessed = true;
 
                     if (volume != _lastVolume)
                     {
@@ -446,7 +476,14 @@ namespace PioPi
 
                 if (!String.IsNullOrWhiteSpace(result))
                 {
-                    System.IO.File.AppendAllText("/home/bem/Projects/PioPi.log",$"{DateTime.Now.ToString("yyyMMdd.HHmmss")}: {result}\r\n");
+                    try
+                    {
+                        System.IO.File.AppendAllText(_logFile,$"{DateTime.Now.ToString("yyyMMdd.HHmmss")}: {result}\r\n");
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                    }
                 }
 
                 return result;
@@ -457,6 +494,8 @@ namespace PioPi
             private async Task<bool> SendApiCall(string url)
             {
                 bool result = false;
+
+                /*
                 using (HttpClient client = new HttpClient())
                 {
                     try
@@ -476,6 +515,7 @@ namespace PioPi
 
 
                 }
+                */
                 return result;
             }
         
@@ -765,37 +805,45 @@ namespace PioPi
             }
         }
 
-protected bool IsVolumeChangeProcessed = false;
+        protected LastSender _lastSender = new LastSender() { Name = "", Date = new DateTime(1970,1,1) };
 
 
-        protected string SetVolume(Double newVolume)
+        protected string SetVolume(Double newVolume, string sender)
         {
             string result = "";
 
-            if (!IsVolumeChangeProcessed)
-            {
-                result = "!IsVolumeChangeProcessed";
-            }
-            else
+            if (_lastSender.Name == sender && _lastSender.Date.AddSeconds(1) < DateTime.Now || _lastSender.Date.AddSeconds(5) < DateTime.Now)
             {
                 // check it !!!
                 int volume = Math.Abs((int)((80.5 + newVolume) * 2));
 
                 if (volume != _lastVolume)
                 {
-                    result = $"Setting Volume to {newVolume.ToString()} dB.\r\n--> Will be: VOL{volume.ToString("000")}";
+                    result = $"Setting Volume assigned by {sender} to {newVolume.ToString()} dB.\r\n--> Will be: VOL{volume.ToString("000")}";
                     RaiseSendResponseHandler($"{volume.ToString("000")}VL", 500);  
+                    _lastSender.Name = sender;
+                    _lastSender.Date = DateTime.Now;
+                    _lastSender.Volume = volume;
                 }       
                 else
                 {
                     result = $"Volume is Unchanged.";
                 }
+
             }     
+            else
+            {
+                result = $"Not Allowed {sender} vs {_lastSender.Name}, {DateTime.Now.ToString()} vs {_lastSender.Date.ToString()}";
+            }
             return result;
         }
 
             protected void ResponseEventHandler(Object sender, ApplicationMessageReceivedEventArgs e)
             {
+                /*
+
+                TODO --- UITZOEKEN !!!
+
                 if (!String.IsNullOrWhiteSpace(e.Topic) && !String.IsNullOrWhiteSpace(e.Payload))
                 {
                     switch (e.Topic )
@@ -807,14 +855,14 @@ protected bool IsVolumeChangeProcessed = false;
 
                             if (newStatus >= 0 && newStatus != _lastPowerStatus)
                             {
-                                SetPower(newStatus);
+                                if (newStatus == 0) { SetPower(newStatus); }
                             }
                             break;
 
                         case "HomeAssistant/PioPi/Volume/Set":
                             try
                             {
-                                SetVolume(Double.Parse(e.Payload));
+                                //SetVolume(Double.Parse(e.Payload), "MQTT");
                             }
                             catch (Exception ex)
                             {
@@ -824,11 +872,30 @@ protected bool IsVolumeChangeProcessed = false;
                     }
 
                 }
+                */
 
             }
 
 
 
+    }
+
+    public class LastSender
+    {
+        public string Name {get; set; }
+        public DateTime Date {get; set; }
+
+        public Double Volume {get; set; }
+    }
+
+
+    public class InputSourceProperties
+    {
+        public PioVSX.InputSource Source {get; set; }
+
+        public string Name {get; set; }
+        public int Volume {get; set; }
+        public bool IsWebradio {get; set; } = false;
     }
 
 

@@ -8,6 +8,8 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Threading.Tasks;
 using System.Runtime.Loader;
+using System.Collections.Generic;
+using Microsoft.Extensions.Configuration;
 
 /*
     https://arnowelzel.de/wp/en/control-av-receivers-by-pioneer-over-the-network
@@ -210,8 +212,57 @@ namespace PioPi
                 AssemblyLoadContext.Default.Unloading += SigTermEventHandler; //register sigterm event handler. Don't forget to import System.Runtime.Loader!
                 Console.CancelKeyPress += CancelHandler; //register sigint event handler
 
+                List<InputSourceProperties> inputSources = new List<InputSourceProperties>();
 
-                _pioVSX = new PioVSX();
+                IConfiguration config;
+                string logFile = "";
+
+                try
+                {
+                    config = new ConfigurationBuilder()
+                    .AddJsonFile($"appsettings.json", optional:false, reloadOnChange:true)
+                   .Build();
+                    logFile = $"/home/piopi/piopi.log";
+                }
+                catch
+                {
+                    config = new ConfigurationBuilder()
+                    .AddJsonFile($"/home/bem/Projects/BeM_Apps/PioPi/appsettings.json", optional:false, reloadOnChange:true)
+                    .Build();
+                    logFile = $"/home/bem/Projects/BeM_Apps/PioPi/piopi.log";
+                }
+
+                foreach ( string item in Enum.GetNames(typeof(PioPi.PioVSX.InputSource)))
+                {
+
+                    string name = config[$"InputSource:{item}:Name"];
+
+                    if (name != null)
+                    {
+                        int volume = -1;
+                        bool isWebradio = false;
+
+                        int.TryParse(config[$"InputSource:{item}:Volume"], out volume);
+                        isWebradio = ((config[$"InputSource:{item}:IsWebRadio"])?.ToLower() == "true");
+
+
+                        InputSourceProperties inputSource = new InputSourceProperties();
+                        inputSource.Source = (PioPi.PioVSX.InputSource)Enum.Parse(typeof(PioPi.PioVSX.InputSource), item);
+                        inputSource.Name = name;
+                        inputSource.Volume = volume;
+                        inputSource.IsWebradio = isWebradio;
+
+                        inputSources.Add(inputSource);
+
+                    }
+
+                }
+
+                
+
+
+
+                _pioVSX = new PioVSX(inputSources,logFile);
                 _pioVSX.SendInformationEvent += InformationEventHandler;
                 _pioVSX.SendResponseEvent += ResponseEventHandler;
                 _pioVSX.Start();
