@@ -300,7 +300,7 @@ namespace PioPi
                 }
 
                 // 
-                // InputSource
+                // InputAudioSignal
                 if (data.StartsWith("AST")) 
                 {
                     // AST6401000000000000000000000111111010000000000012400000000
@@ -459,11 +459,15 @@ namespace PioPi
                 if (data.StartsWith("LM")) 
                 {
                     string listeningMode = GetLmResult(data.Substring(2));
+                    result = $"Listening Mode: {listeningMode} [{data}]";
                     if (listeningMode != _lastListeningMode)
                     {
-                        result = $"Listening Mode: {listeningMode}";
                         SendToMqtt("ListeningMode", listeningMode);
                         _lastListeningMode = listeningMode;
+                    }
+                    else
+                    {
+                        result += " (Unchanged)";
                     }
                 }
 
@@ -571,7 +575,7 @@ namespace PioPi
             , ANALOG_2 = 1
             , ANALOG_3 = 2
             , PCM = 3
-            , PCM_2 = 4
+            , PCM_DIGITAL = 4
             , DOLBY_DIGITAL = 5
             , DTS = 6
             , DTS_ES_Matrix = 7
@@ -838,41 +842,77 @@ namespace PioPi
             return result;
         }
 
+//
+
+        protected string SetListeningMode(string newListeningMode, string sender)
+        {
+            string result = "";
+
+            if (_lastSender.Name == sender && _lastSender.Date.AddSeconds(1) < DateTime.Now || _lastSender.Date.AddSeconds(5) < DateTime.Now)
+            {
+
+                    result = $"Setting ListeningMode assigned by {sender} to {newListeningMode}.";
+                    RaiseSendResponseHandler($"{newListeningMode}SR", 500);  
+                    _lastSender.Name = sender;
+                    _lastSender.Date = DateTime.Now;
+            }     
+            else
+            {
+                result = $"Not Allowed {sender} vs {_lastSender.Name}, {DateTime.Now.ToString()} vs {_lastSender.Date.ToString()}";
+            }
+            return result;
+        }
+
+
             protected void ResponseEventHandler(Object sender, ApplicationMessageReceivedEventArgs e)
             {
-                /*
-
-                TODO --- UITZOEKEN !!!
 
                 if (!String.IsNullOrWhiteSpace(e.Topic) && !String.IsNullOrWhiteSpace(e.Payload))
                 {
                     switch (e.Topic )
                     {
-                        case "HomeAssistant/PioPi/Power/set":
-                            int newStatus = -1;
-                            if (e.Payload == "on") { newStatus = 1;}
-                            if (e.Payload == "off") { newStatus = 0;}
 
-                            if (newStatus >= 0 && newStatus != _lastPowerStatus)
-                            {
-                                if (newStatus == 0) { SetPower(newStatus); }
-                            }
-                            break;
+                        /*
 
-                        case "HomeAssistant/PioPi/Volume/Set":
-                            try
-                            {
-                                //SetVolume(Double.Parse(e.Payload), "MQTT");
+                        TODO --- UITZOEKEN !!!
+
+                                case "HomeAssistant/PioPi/Power/set":
+                                    int newStatus = -1;
+                                    if (e.Payload == "on") { newStatus = 1;}
+                                    if (e.Payload == "off") { newStatus = 0;}
+
+                                    if (newStatus >= 0 && newStatus != _lastPowerStatus)
+                                    {
+                                        if (newStatus == 0) { SetPower(newStatus); }
+                                    }
+                                    break;
+
+                                case "HomeAssistant/PioPi/Volume/Set":
+                                    try
+                                    {
+                                        //SetVolume(Double.Parse(e.Payload), "MQTT");
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        Console.WriteLine($"MQTT-Volume-Exception: {ex.ToString()}");
+                                    }
+                                    break;
                             }
-                            catch (Exception ex)
-                            {
-                                Console.WriteLine($"MQTT-Volume-Exception: {ex.ToString()}");
-                            }
-                            break;
+                        */
+
+                                case "PioPi/ListeningMode/set":
+                                    string newListeningMode = "-";
+                                    if (e.Payload == "ADVANCED") { newListeningMode = "0112";}
+                                    if (e.Payload == "STANDARD") { newListeningMode = "0018";}
+
+                                    if (newListeningMode != "-")
+                                    {
+                                        Console.WriteLine(SetListeningMode(newListeningMode, "VSX-1123")); 
+                                    }
+                                    break;
                     }
 
                 }
-                */
 
             }
 

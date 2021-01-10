@@ -54,7 +54,7 @@ namespace PioPi
 
             // Use TCP connection.
             var options = new MqttClientOptionsBuilder()
-                .WithTcpServer("rpi2a.bem.lan", 1883) // Port is optional
+                .WithTcpServer("mqtt.bem.lan", 1883) // Port is optional
                 .WithClientId("PioPi")
                 .Build();
 
@@ -105,7 +105,8 @@ namespace PioPi
                 // Subscribe to a topic
                 //await _mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic("/EspEasy_Meterkast/BME280/Pressure").Build());
                 await _mqttClient.SubscribeAsync("HomeAssistant/PioPi/Power/set");
-                await _mqttClient.SubscribeAsync("HomeAssistant/PioPi/Volume/Set");
+                await _mqttClient.SubscribeAsync("HomeAssistant/PioPi/Volume/set");
+                await _mqttClient.SubscribeAsync("PioPi/ListeningMode/set");
                 // HomeAssistant/PioPi/Volume/Set^M
 
                 //Console.WriteLine("### SUBSCRIBED ###");
