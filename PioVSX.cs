@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Net.Http;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace PioPi
 {
@@ -98,23 +99,6 @@ namespace PioPi
         public int _lastPowerStatus = -1;
         public string _lastListeningMode {get; private set;} = "";
 
-        public enum DomoticzDevices
-        {
-
-            /*
-            // Domoticz API Call
-            // https://www.domoticz.com/wiki/Domoticz_API/JSON_URL%27s
-            // DeviceId == 90
-            // eg. http://192.168.1.2:8080/json.htm?type=command&param=udevice&idx=$idx&nvalue=0&svalue=79
-            // VSX1123-Volume        id==90
-            // VSX1123-PowerStatus   id==148
-            // VSX1123-LastSong      id==149
-            */
-
-            VSX1123_Volume        = 90,
-            VSX1123_PowerStatus   = 148,
-            VSX1123_LastSong      = 149
-        }
 
         public void ProcessData(string data)
         {
@@ -183,9 +167,11 @@ namespace PioPi
                             _lastPowerStatus = newStatus;
                         }
 
+                        /*
                         int deviceId = 148;
                         string url = $"http://rpi2a.bem.lan:8080/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue={newStatus.ToString()}&svalue=";
                         SendApiCall(url).Wait(1000);
+                        */
 
                     }
                     else
@@ -355,9 +341,11 @@ namespace PioPi
                         result = $"Volume is set to {volume.ToString()} dB [{data.Substring(3)}]";
                         _lastVolume = volume;
 
+                        /*
                         int deviceId = 90;
                         string url = $"http://rpi2a.bem.lan:8080/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={volume.ToString()}";
                         SendApiCall(url).Wait(1000);
+                        */
 
                         SendToMqtt("Volume", volume.ToString());
 
@@ -427,10 +415,13 @@ namespace PioPi
                                 {
                                     _lastSong = text;
                                     result = "NewWebRadioSong: " + text;
+                                    
+                                    /*
                                     int deviceId = 149;
                                     text = System.Net.WebUtility.UrlEncode(text);
                                     string url = $"http://rpi2a.bem.lan:8080/json.htm?type=command&param=udevice&idx={deviceId.ToString()}&nvalue=0&svalue={text}";
                                     SendApiCall(url).Wait(1000);
+                                    */
 
                                     SendToMqtt("WebRadioSong", text);
                                 }
@@ -495,11 +486,11 @@ namespace PioPi
 
 
 
+                /*
             private async Task<bool> SendApiCall(string url)
             {
                 bool result = false;
 
-                /*
                 using (HttpClient client = new HttpClient())
                 {
                     try
@@ -519,10 +510,10 @@ namespace PioPi
 
 
                 }
-                */
+                
                 return result;
             }
-        
+            */
 
             //http://dotnetstock.com/technical/convert-byte-array-hexadecimal-string/
             public byte[] ConvertStringToByteArray(String strhex)
@@ -902,13 +893,23 @@ namespace PioPi
 
                                 case "PioPi/ListeningMode/set":
                                     string newListeningMode = "-";
-                                    if (e.Payload == "ADVANCED") { newListeningMode = "0112";}
-                                    if (e.Payload == "STANDARD") { newListeningMode = "0018";}
-
-                                    if (newListeningMode != "-")
-                                    {
+                                    if (e.Payload == "STEREO")   
+                                    { 
+                                        newListeningMode = "0112";  // ADVANCED / EXT.STEREO
                                         Console.WriteLine(SetListeningMode(newListeningMode, "VSX-1123")); 
                                     }
+
+                                    if (e.Payload == "STANDARD") 
+                                    { 
+                                        newListeningMode = "0018";  // STANDARD / PRO LOGIC2x MOVIE
+                                        Console.WriteLine(SetListeningMode(newListeningMode, "VSX-1123")); 
+
+                                        //Thread.Sleep(1200);
+
+                                        //newListeningMode = "0010";  // STANDARD / PRO LOGIC2x MOVIE
+                                        //Console.WriteLine(SetListeningMode(newListeningMode, "VSX-1123")); 
+                                    }
+
                                     break;
                     }
 
