@@ -103,7 +103,11 @@ namespace PioPi
 
                     // Send test data to the remote device.  LISTENINGMODE
                     Send("?L\r\n");  
-                    sendDone.WaitOne();  
+                    sendDone.WaitOne(); 
+
+                    // Send test data to the remote device.  AUDIODELAY
+                    Send("?ATF\r\n");  
+                    sendDone.WaitOne(); 
 
                 } catch (Exception e) {  
                     Console.WriteLine(e.ToString());  
@@ -227,9 +231,9 @@ namespace PioPi
                 catch
                 {
                     config = new ConfigurationBuilder()
-                    .AddJsonFile($"/home/bem/Projects/BeM_Apps/PioPi/appsettings.json", optional:false, reloadOnChange:true)
+                    .AddJsonFile($"/home/bas/Projects/PioPi/appsettings.json", optional:false, reloadOnChange:true)
                     .Build();
-                    logFile = $"/home/bem/Projects/BeM_Apps/PioPi/piopi.log";
+                    logFile = $"/home/bas/Projects/PioPi/piopi.log";
                 }
 
                 foreach ( string item in Enum.GetNames(typeof(PioPi.PioVSX.InputSource)))

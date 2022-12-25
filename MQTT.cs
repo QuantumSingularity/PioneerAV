@@ -58,6 +58,41 @@ namespace PioPi
                 .WithClientId("PioPi")
                 .Build();
 
+
+            // new for mqttnet 4
+            _mqttClient.DisconnectedAsync += async e =>
+            {
+
+                _isConnected = false;
+                Console.WriteLine("### MQTT - DISCONNECTED FROM SERVER ###");
+                await Task.Delay(TimeSpan.FromSeconds(5));
+
+                if (e.ClientWasConnected)
+                {
+
+                    try
+                    {
+                        if (_mustStop)
+                        {
+                            Console.WriteLine("### MQTT - DO NOT RECONNECT - MustStop is Active ###");
+                        }
+                        else
+                        {
+                            // Use the current options as the new options.
+                            await _mqttClient.ConnectAsync(_mqttClient.Options);
+                            Console.WriteLine("### MQTT - RECONNECTED ###");
+                        }
+                    }
+                    catch
+                    {
+                        Console.WriteLine("### MQTT - RECONNECTING FAILED ###");
+                    }
+
+                }
+            };
+
+            // only for old versions of mqttnet
+            /*
             _mqttClient.Disconnected += async (s, e) =>
             {
                 _isConnected = false;
@@ -83,7 +118,25 @@ namespace PioPi
 
 
             };
+            */
 
+            // new for mqttnet 4
+            _mqttClient.ApplicationMessageReceivedAsync += e =>
+            {
+                Console.WriteLine("### MQTT - RECEIVED APPLICATION MESSAGE ###");
+                Console.WriteLine($"+ Topic = {e.ApplicationMessage.Topic}");
+                Console.WriteLine($"+ Payload = {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)}");
+                Console.WriteLine($"+ QoS = {e.ApplicationMessage.QualityOfServiceLevel}");
+                Console.WriteLine($"+ Retain = {e.ApplicationMessage.Retain}");
+                Console.WriteLine();
+
+                RaiseSendResponseHandler(e.ApplicationMessage.Topic, Encoding.UTF8.GetString(e.ApplicationMessage.Payload));
+
+                return Task.CompletedTask;
+            };
+
+            // only for old versions of mqttnet
+            /*
             _mqttClient.ApplicationMessageReceived += (s, e) =>
             {
                 Console.WriteLine("### MQTT - RECEIVED APPLICATION MESSAGE ###");
@@ -96,7 +149,44 @@ namespace PioPi
                 RaiseSendResponseHandler(e.ApplicationMessage.Topic, Encoding.UTF8.GetString(e.ApplicationMessage.Payload));
 
             };
+            */
 
+
+
+            _mqttClient.ConnectedAsync += async e =>
+            {
+                _isConnected = true;
+                Console.WriteLine("### MQTT - CONNECTED WITH SERVER ###");
+
+                // Subscribe to a topic
+                //await _mqttClient.SubscribeAsync(new TopicFilterBuilder().WithTopic("/EspEasy_Meterkast/BME280/Pressure").Build());
+                await _mqttClient.SubscribeAsync("PioPi/Power/set");
+                await _mqttClient.SubscribeAsync("PioPi/Volume/set");
+                await _mqttClient.SubscribeAsync("PioPi/ListeningMode/set");
+                await _mqttClient.SubscribeAsync("PioPi/AudioDelay/set");
+                // HomeAssistant/PioPi/Volume/Set^M
+
+
+                /*
+                var mqttFactory = new MqttFactory();
+                var mqttSubscribeOptions = mqttFactory.CreateSubscribeOptionsBuilder()
+                    .WithTopicFilter(
+                        f =>
+                        {
+                            f.WithTopic("mqttnet/samples/topic/2");
+                        })
+                    .Build();
+
+                await mqttClient.SubscribeAsync(mqttSubscribeOptions, CancellationToken.None);
+                */
+                //Console.WriteLine("### SUBSCRIBED ###");
+
+                //return Task.CompletedTask;
+
+            };
+
+            // only for old versions of mqttnet
+            /*
             _mqttClient.Connected += async (s, e) =>
             {
                 _isConnected = true;
@@ -111,6 +201,7 @@ namespace PioPi
 
                 //Console.WriteLine("### SUBSCRIBED ###");
             };
+            */
 
             await _mqttClient.ConnectAsync(options);
 
@@ -162,7 +253,7 @@ namespace PioPi
                 var message = new MqttApplicationMessageBuilder()
                     .WithTopic(topic)
                     .WithPayload(payload)
-                    .WithExactlyOnceQoS()
+                    //.WithExactlyOnceQoS()
                     .WithRetainFlag()
                     .Build();
         

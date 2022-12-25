@@ -98,6 +98,7 @@ namespace PioPi
         public double _lastVolume {get; private set;} = -80.5;
         public int _lastPowerStatus = -1;
         public string _lastListeningMode {get; private set;} = "";
+        public string _lastAudioDelay {get; private set;} = "";
 
 
         public void ProcessData(string data)
@@ -164,6 +165,7 @@ namespace PioPi
                             SendToMqtt("WebRadioStation", "");
                             SendToMqtt("ListeningMode", "");
                             SendToMqtt("InputAudioSignal", "");
+                            SendToMqtt("AudioDelay", "");
                             _lastPowerStatus = newStatus;
                         }
 
@@ -467,6 +469,32 @@ namespace PioPi
                 if (data.StartsWith("VTA") || data.StartsWith("AU")) 
                 {
                     result = "";
+                }
+
+
+                // ATF040 ???
+                if (data.StartsWith("ATF")) 
+                {
+                    string audioDelayString = data.Substring(3);
+
+                    result = $"Audio Delay: {audioDelayString} [{data}]";
+
+                    if (int.TryParse(audioDelayString, out int audioDelay))
+                    {
+                        if (audioDelayString != _lastAudioDelay)
+                        {
+                            SendToMqtt("AudioDelay", $"{audioDelay.ToString()} ms");
+                            _lastAudioDelay = audioDelayString;
+                        }
+                        else
+                        {
+                            result += " (Unchanged)";
+                        }
+                    }
+                    else
+                    {
+                        //
+                    }
                 }
 
                 if (!String.IsNullOrWhiteSpace(result))
